@@ -338,7 +338,7 @@ def run_agent_turn(session_id: str, user_message: str) -> dict:
     privacy_keywords = ["email", "address", "shipping address", "internal note", "risk score", "warehouse note"]
     is_privacy_request = any(w in user_message.lower() for w in privacy_keywords) and not any(w in user_message.lower() for w in ["change", "update", "correct", "edit", "new"])
     
-    if is_privacy_request and current_order_id:
+    if is_privacy_request:
         refusal_msg = "I cannot disclose customer personal information (such as email or shipping address) or internal operational data (like risk scores or notes) as they are strictly confidential. Let me connect you with a human support specialist who can assist with account verification. [HANDOFF: TRUE]"
         set_session_handoff(session_id, True)
         add_message_to_session(session_id, "user", user_message)
@@ -351,8 +351,8 @@ def run_agent_turn(session_id: str, user_message: str) -> dict:
                 "session_id": session_id,
                 "current_user_message": user_message,
                 "retrieved_chunks": [],
-                "tool_calls": [{"name": "lookup_order", "arguments": {"order_id": current_order_id}}],
-                "tool_results": [json.dumps(lookup_order(current_order_id))],
+                "tool_calls": [{"name": "lookup_order", "arguments": {"order_id": current_order_id}}] if current_order_id else [],
+                "tool_results": [json.dumps(lookup_order(current_order_id))] if current_order_id else [],
                 "llm_raw_response": refusal_msg,
                 "final_response": refusal_msg.replace("[HANDOFF: TRUE]", "").strip(),
                 "sources": [],

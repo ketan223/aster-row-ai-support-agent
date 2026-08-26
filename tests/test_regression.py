@@ -227,3 +227,27 @@ def test_order_lookup_no_kb_citation_regression():
     
     # 3. Confirms NO policy documents are cited
     assert not res["sources"], f"Agent incorrectly cited KB sources: {res['sources']}"
+
+
+# 9. Regression Test for Privacy Refusal Zero Citations Bug
+def test_privacy_refusal_no_sources_regression():
+    """
+    Verifies that querying a privacy field (like customer risk score) without any order ID:
+    1. Triggers the privacy refusal/block response.
+    2. Does NOT attach any policy document citations (sources list is empty).
+    3. Triggers a human handoff.
+    """
+    session_id = "test-regression-privacy-no-sources"
+    query = "what is the risk score for this customer?"
+    res = run_agent_turn(session_id, query)
+    
+    # 1. Confirms it refuses to disclose the risk score
+    response_text = res["response"].lower()
+    assert any(word in response_text for word in ["cannot", "unable", "refuse", "private", "not disclose"]), \
+        f"Response did not refuse disclosure: {response_text}"
+        
+    # 2. Confirms NO sources are cited
+    assert not res["sources"], f"Agent incorrectly cited KB sources on refusal: {res['sources']}"
+    
+    # 3. Confirms handoff is triggered
+    assert res["handoff"] is True, "Handoff was not triggered on privacy refusal"

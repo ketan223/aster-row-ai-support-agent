@@ -899,6 +899,13 @@ Order Lookup Results:
         citation_matches = re.findall(r"Source:\s*([0-9a-zA-Z.-]+)\s*[\u2014\u2013-]\s*([^\n\r.]+)", response_text)
         cited_sources = [{"file": f.strip(), "heading": h.strip()} for f, h in citation_matches]
     
+    # If the response is a privacy refusal/confidentiality block, force sources to be empty and strip any citations from the text
+    response_lower = response_text.lower()
+    refusal_patterns = ["cannot disclose", "unable to disclose", "strictly confidential", "private", "refuse to disclose", "cannot share"]
+    if any(p in response_lower for p in refusal_patterns):
+        response_text = re.sub(r"\n*Source:\s*[0-9a-zA-Z.-]+\s*[\u2014\u2013-]\s*[^\n\r.]+", "", response_text).strip()
+        cited_sources = []
+
     # Add to session memory
     add_message_to_session(session_id, "user", user_message)
     add_message_to_session(session_id, "assistant", response_text)

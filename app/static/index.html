@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aster & Row — Support Center</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM (Development version for easier debug/rendering) -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Babel for JSX compilation in browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col">
+    <div id="root" class="h-full flex flex-col"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Displays citation cards for source verification.
+        function CitationCard({ source }) {
+            return (
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-100 border border-slate-200 text-xs text-slate-600 font-medium mr-1.5 mb-1.5 hover:bg-slate-200 transition-colors">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-500"></i>
+                    <span>{source.file}</span>
+                    <span class="text-slate-400 font-normal">|</span>
+                    <span class="text-slate-500 italic">{source.heading}</span>
+                </div>
+            );
+        }
+
+        // Main App Component
+        function App() {
+            const [messages, setMessages] = useState([
+                {
+                    id: 'welcome',
+                    role: 'assistant',
+                    content: "Hello! Welcome to Aster & Row support. How can I help you with your order, returns, or shipping questions today?"
+                }
+            ]);
+            const [input, setInput] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [sessionId, setSessionId] = useState(localStorage.getItem('ar_session_id') || '');
+            const [handoff, setHandoff] = useState(false);
+            const [showDebug, setShowDebug] = useState(false);
+            const [debugTrace, setDebugTrace] = useState(null);
+
+            const messagesEndRef = useRef(null);
+
+            useEffect(() => {
+                // Initialize session if not present
+                if (!sessionId) {
+                    const newId = crypto.randomUUID();
+                    localStorage.setItem('ar_session_id', newId);
+                    setSessionId(newId);
+                }
+            }, []);
+
+            useEffect(() => {
+                // Trigger Lucide icons rendering on updates
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+                scrollToBottom();
+            }, [messages, loading, showDebug]);
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            };
+
+            const handleSend = async (e) => {
+                e.preventDefault();
+                if (!input.trim() || loading) return;
+
+                const userMsgText = input;
+                setInput('');
+                
+                // Add user message to UI
+                const newMsgId = crypto.randomUUID();
+                setMessages(prev => [...prev, { id: newMsgId, role: 'user', content: userMsgText }]);
+                setLoading(true);
+
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: userMsgText, session_id: sessionId })
+                    });
+                    const data = await response.json();
+                    
+                    if (data.session_id && data.session_id !== sessionId) {
+                        localStorage.setItem('ar_session_id', data.session_id);
+                        setSessionId(data.session_id);
+                    }
+
+                    // Add assistant response
+                    setMessages(prev => [...prev, {
+                        id: crypto.randomUUID(),
+                        role: 'assistant',
+                        content: data.response,
+                        sources: data.sources,
+                        handoff: data.handoff
+                    }]);
+
+                    if (data.handoff) {
+                        setHandoff(true);
+                    }
+
+                    // Query debug trace
+                    fetchDebugTrace(data.session_id || sessionId);
+
+                } catch (error) {
+                    setMessages(prev => [...prev, {
+                        id: crypto.randomUUID(),
+                        role: 'assistant',
+                        content: "I'm having trouble connecting to the support server. Please try again later.",
+                        error: true
+                    }]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleReset = async () => {
+                if (loading) return;
+                try {
+                    await fetch('/api/reset', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: sessionId })
+                    });
+                } catch (e) {}
+                
+                // Reset local state
+                const newId = crypto.randomUUID();
+                localStorage.setItem('ar_session_id', newId);
+                setSessionId(newId);
+                setHandoff(false);
+                setDebugTrace(null);
+                setMessages([
+                    {
+                        id: 'welcome',
+                        role: 'assistant',
+                        content: "Session reset. Hello! How can I help you with your order, returns, or shipping questions today?"
+                    }
+                ]);
+            };
+
+            const fetchDebugTrace = async (sessId) => {
+                try {
+                    const res = await fetch(`/api/debug?session_id=${sessId}`);
+                    const trace = await res.json();
+                    if (!trace.error) {
+                        setDebugTrace(trace);
+                    }
+                } catch (e) {}
+            };
+
+            return (
+                <div class="flex-1 flex overflow-hidden">
+                    {/* Main Chat Interface */}
+                    <div class={`flex-1 flex flex-col h-full bg-slate-50 transition-all duration-300 ${showDebug ? 'pr-0 lg:pr-[400px]' : ''}`}>
+                        {/* Header */}
+                        <header class="h-16 px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 shadow-sm">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                                    A
+                                </div>
+                                <div>
+                                    <h1 class="text-sm font-semibold text-slate-900">Aster & Row</h1>
+                                    <p class="text-xs text-emerald-600 flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                                        Support Assistant
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button 
+                                    onClick={handleReset}
+                                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
+                                    title="Reset current conversation"
+                                >
+                                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                                    <span>New Chat</span>
+                                </button>
+                                <button 
+                                    onClick={() => setShowDebug(!showDebug)}
+                                    class={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${showDebug ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800' : 'text-slate-600 border-slate-200 hover:bg-slate-100'}`}
+                                >
+                                    <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
+                                    <span>Debug Trace</span>
+                                </button>
+                            </div>
+                        </header>
+
+                        {/* Chat Messages scroll area */}
+                        <div class="flex-1 overflow-y-auto px-6 py-6 chat-scroll flex flex-col gap-4">
+                            {messages.map(msg => (
+                                <div 
+                                    key={msg.id} 
+                                    class={`flex flex-col max-w-[80%] ${msg.role === 'user' ? 'self-end items-end' : 'self-start items-start'}`}
+                                >
+                                    {/* Message box */}
+                                    <div class={`px-4 py-3 rounded-2xl shadow-sm leading-relaxed text-sm ${
+                                        msg.role === 'user' 
+                                            ? 'bg-slate-900 text-slate-100 rounded-tr-none' 
+                                            : msg.error 
+                                                ? 'bg-red-50 text-red-800 border border-red-200 rounded-tl-none'
+                                                : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
+                                    }`}>
+                                        <p class="whitespace-pre-wrap">{msg.content}</p>
+                                    </div>
+                                    
+                                    {/* Citations/sources when present */}
+                                    {msg.sources && msg.sources.length > 0 && (
+                                        <div class="mt-2 flex flex-wrap gap-1">
+                                            {msg.sources.map((s, idx) => (
+                                                <CitationCard key={idx} source={s} />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Alert for Human Escalation */}
+                                    {msg.handoff && (
+                                        <div class="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 max-w-lg">
+                                            <i data-lucide="user-cog" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+                                            <div>
+                                                <h4 class="text-xs font-semibold text-amber-800">Human Assistance Recommended</h4>
+                                                <p class="text-[11px] text-amber-700 mt-0.5 leading-normal">
+                                                    An operational issue or policy conflict has been flagged. Human support will verify and process the resolution.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            
+                            {loading && (
+                                <div class="self-start flex items-center gap-1.5 px-4 py-3 rounded-2xl bg-white border border-slate-200 rounded-tl-none shadow-sm">
+                                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce"></span>
+                                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]"></span>
+                                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:0.4s]"></span>
+                                </div>
+                            )}
+
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Input Area */}
+                        <div class="p-4 bg-white border-t border-slate-200 shrink-0 shadow-inner">
+                            <form onSubmit={handleSend} class="flex items-center gap-2 max-w-4xl mx-auto">
+                                <input
+                                    type="text"
+                                    value={input}
+                                    onChange={e => setInput(e.target.value)}
+                                    placeholder="Ask a question about shipping, returns, order statuses, or products..."
+                                    disabled={loading}
+                                    class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-slate-50 focus:bg-white text-sm transition-all"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={loading || !input.trim()}
+                                    class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-sm transition-colors flex items-center gap-2 shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <i data-lucide="send" class="w-4 h-4"></i>
+                                    <span>Send</span>
+                                </button>
+                            </form>
+                            <p class="text-center text-[10px] text-slate-400 mt-2">
+                                Aster & Row support bot checks order records and company documents to assist you.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Developer Observability slideout */}
+                    {showDebug && (
+                        <div class="w-full lg:w-[400px] h-full bg-slate-900 border-l border-slate-800 flex flex-col text-slate-300 shrink-0 absolute right-0 top-0 shadow-2xl z-20 lg:relative">
+                            <header class="h-16 px-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-950">
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="activity" class="w-5 h-5 text-emerald-500 animate-pulse"></i>
+                                    <h2 class="text-sm font-semibold text-slate-100">Live Agent Observability Trace</h2>
+                                </div>
+                                <button 
+                                    onClick={() => setShowDebug(false)}
+                                    class="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+                                >
+                                    <i data-lucide="x" class="w-5 h-5"></i>
+                                </button>
+                            </header>
+
+                            <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 text-xs font-mono">
+                                {!debugTrace ? (
+                                    <div class="text-center text-slate-500 py-12">
+                                        <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-600"></i>
+                                        <p>Send a message to see the pipeline execution trace details.</p>
+                                    </div>
+                                ) : (
+                                    <React.Fragment>
+                                        <div>
+                                            <span class="text-emerald-500 font-semibold">[Session ID]</span>
+                                            <div class="bg-slate-950 p-2.5 rounded mt-1 text-[11px] text-slate-400 break-all select-all">{debugTrace.session_id}</div>
+                                        </div>
+
+                                        <div>
+                                            <span class="text-blue-400 font-semibold">[Retrieved RAG Passages]</span>
+                                            <div class="flex flex-col gap-2 mt-1">
+                                                {debugTrace.retrieved_chunks && debugTrace.retrieved_chunks.map((chk, i) => (
+                                                    <div key={i} class="bg-slate-950 p-2 rounded border border-slate-800">
+                                                        <div class="text-slate-400 flex justify-between font-bold border-b border-slate-800 pb-1 mb-1">
+                                                            <span class="truncate max-w-[200px]">{chk.filename}</span>
+                                                            <span class="text-emerald-500 font-semibold">{(chk.score * 100).toFixed(1)}%</span>
+                                                        </div>
+                                                        <div class="text-slate-500 italic mb-1">Heading: {chk.heading}</div>
+                                                        <div class="text-slate-300 leading-normal line-clamp-4 hover:line-clamp-none transition-all duration-300">{chk.text}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <span class="text-purple-400 font-semibold">[Tool Calls & Execution]</span>
+                                            <div class="mt-1 flex flex-col gap-1.5">
+                                                {debugTrace.tool_calls && debugTrace.tool_calls.length > 0 ? (
+                                                    debugTrace.tool_calls.map((tc, idx) => (
+                                                        <div key={idx} class="bg-slate-950 p-2.5 rounded border border-slate-800">
+                                                            <div class="text-amber-500 font-bold">Tool: {tc.name}</div>
+                                                            <div class="text-slate-400 mt-0.5">Args: {JSON.stringify(tc.arguments)}</div>
+                                                            <div class="text-emerald-600 mt-1 font-bold">Sanitized Tool Output:</div>
+                                                            <pre class="bg-slate-900 p-1.5 rounded text-[10px] text-slate-400 overflow-x-auto whitespace-pre mt-1">
+                                                                {JSON.stringify(JSON.parse(debugTrace.tool_results[idx]), null, 2)}
+                                                            </pre>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div class="text-slate-600 bg-slate-950 p-2 rounded">No tool execution occurred this turn.</div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <span class="text-yellow-500 font-semibold">[Triggers & Observability Metrics]</span>
+                                            <div class="bg-slate-950 p-2.5 rounded mt-1 flex flex-col gap-1.5">
+                                                <div class="flex justify-between">
+                                                    <span class="text-slate-500">Human Handoff:</span>
+                                                    <span class={debugTrace.handoff_triggered ? 'text-amber-500 font-bold' : 'text-slate-600'}>
+                                                        {debugTrace.handoff_triggered ? 'YES' : 'NO'}
+                                                    </span>
+                                                </div>
+                                                <div class="flex justify-between">
+                                                    <span class="text-slate-500">Fallback Provider:</span>
+                                                    <span class={debugTrace.fallback_triggered ? 'text-red-500 font-bold' : 'text-slate-600'}>
+                                                        {debugTrace.fallback_triggered ? 'YES' : 'NO'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </React.Fragment>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Render application
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>

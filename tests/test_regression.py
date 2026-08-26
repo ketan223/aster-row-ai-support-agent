@@ -198,3 +198,32 @@ def test_citation_fallback_no_unused_leak_regression():
     assert "01-returns-policy-current.md" in cited_files
     # Confirms it does NOT cite other borderline unrelated retrieved files (e.g. 05-domestic-shipping.md)
     assert "05-domestic-shipping.md" not in cited_files
+
+
+# 8. Regression Test for Order Lookup Tool Execution & Zero KB Citation Bug
+def test_order_lookup_no_kb_citation_regression():
+    """
+    Verifies that querying order details with a valid order ID:
+    1. Triggers the order_lookup tool.
+    2. Builds the response using tool results.
+    3. Contains carrier (UPS), status (shipped), and estimated delivery (August 22, 2026).
+    4. Does NOT cite any KB policy documents.
+    """
+    session_id = "test-regression-order-lookup-no-citation"
+    query = "where is my order ORD-1007"
+    res = run_agent_turn(session_id, query)
+    response_text = res["response"]
+    
+    # 1. Confirms the lookup tool was actually called with arguments
+    tool_calls = res["trace"].get("tool_calls", [])
+    assert len(tool_calls) > 0, "order_lookup tool was not called"
+    assert tool_calls[0]["name"] == "lookup_order"
+    assert tool_calls[0]["arguments"]["order_id"] == "ORD-1007"
+    
+    # 2. Confirms response details match database contents
+    assert "shipped" in response_text.lower()
+    assert "ups" in response_text.lower()
+    assert "august 22, 2026" in response_text.lower()
+    
+    # 3. Confirms NO policy documents are cited
+    assert not res["sources"], f"Agent incorrectly cited KB sources: {res['sources']}"

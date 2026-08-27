@@ -11,39 +11,6 @@ class LLMProvider(ABC):
     def chat(self, messages: list[dict], system_prompt: str = None) -> str:
         pass
 
-class OllamaProvider(LLMProvider):
-    # Initializes the Ollama provider with a model and an API base URL.
-    def __init__(self, model: str = None, api_base: str = None):
-        self.model = model or os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
-        self.api_base = api_base or os.getenv("OLLAMA_API_BASE", "http://localhost:11434")
-
-    # Executes a chat request to a local Ollama service using its HTTP API.
-    def chat(self, messages: list[dict], system_prompt: str = None) -> str:
-        url = f"{self.api_base}/api/chat"
-        
-        payload_messages = []
-        if system_prompt:
-            payload_messages.append({"role": "system", "content": system_prompt})
-        payload_messages.extend(messages)
-        
-        payload = {
-            "model": self.model,
-            "messages": payload_messages,
-            "stream": False,
-            "options": {
-                "temperature": 0.0  # Set to 0.0 for deterministic evaluation answers
-            }
-        }
-        
-        try:
-            response = requests.post(url, json=payload, timeout=30)
-            response.raise_for_status()
-            result = response.json()
-            return result.get("message", {}).get("content", "").strip()
-        except Exception as e:
-            # Return an error message or raise
-            raise RuntimeError(f"Ollama provider failed: {str(e)}")
-
 class MistralProvider(LLMProvider):
     # Initializes the Mistral provider with an API key and model name.
     def __init__(self, api_key: str = None, model: str = None):
@@ -80,10 +47,6 @@ class MistralProvider(LLMProvider):
         except Exception as e:
             raise RuntimeError(f"Mistral provider failed: {str(e)}")
 
-# Factory function that creates and returns the configured LLMProvider subclass.
+# Factory function that creates and returns the configured LLMProvider.
 def get_llm_provider() -> LLMProvider:
-    provider_name = os.getenv("LLM_PROVIDER", "ollama").lower()
-    if provider_name == "mistral":
-        return MistralProvider()
-    else:
-        return OllamaProvider()
+    return MistralProvider()

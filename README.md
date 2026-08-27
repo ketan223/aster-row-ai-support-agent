@@ -161,8 +161,10 @@ Our final agent logic successfully resolved all failures, achieving a **100% pas
 | **Tool-use** | 0.0% (0/6) | **100.0% (6/6)** |
 | **Overall Score** | **17.1% (6/35)** | **100.0% (35/35)** |
 
-*Regression suite score*: **100% (6/6 passed)**
-*Total combined score*: **100% (41/41 passed)**
+The evaluation suite consists of 15 visible cases (from evaluation/visible-cases.json) + 20 original custom cases = 35 total cases.
+
+*Regression suite score*: **100.0% (9/9 passed)**
+*Total combined score*: **100.0% (44/44 passed)**
 
 ---
 

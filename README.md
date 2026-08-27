@@ -229,7 +229,8 @@ The evaluation suite consists of 15 visible cases (from evaluation/visible-cases
 ## 8. Known Limitations & Next Steps
 
 1. **In-Memory History Reset**: Conversations are tracked in-memory. In a production cluster, this should be backed by Redis or PostgreSQL session tables.
-2. **Hardcoded Overrides**: A few deterministic overrides were built to enforce rules on the local 1.5B model. In a production setup, migrating to a larger instruction-tuned model (e.g. `qwen2.5:7b` or `gpt-4o-mini`) would allow safe rule enforcement natively via system prompts.
+2. **System Prompt Disclosure Security**: Programmatic system prompt extraction protection is currently keyword-list based, known limitation. In a production environment, this should be replaced with a structural LLM guardrail service (like Llama Guard or NeMo Guardrails) to detect semantic variations of prompt injection attacks.
+3. **Hardcoded Overrides**: A few deterministic overrides were built to enforce rules on the local 1.5B model. In a production setup, migrating to a larger instruction-tuned model (e.g. `qwen2.5:7b` or `gpt-4o-mini`) would allow safe rule enforcement natively via system prompts.
 
 ---
 

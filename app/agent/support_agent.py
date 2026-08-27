@@ -542,58 +542,9 @@ Order Lookup Results:
             }
         }
 
-    # 13. Pre-emptive Abstention / Out-of-domain handling
-    if "vegan" in user_message.lower():
-        abstention_msg = "I apologize, but I do not have enough information in our company documents to confirm if the fabrics and adhesives in our bags are vegan. Let me connect you with a human specialist to assist you further. [HANDOFF: TRUE]"
-        set_session_handoff(session_id, True)
-        add_message_to_session(session_id, "user", user_message)
-        add_message_to_session(session_id, "assistant", abstention_msg.replace("[HANDOFF: TRUE]", "").strip())
-        return {
-            "response": abstention_msg.replace("[HANDOFF: TRUE]", "").strip(),
-            "sources": [],
-            "handoff": True,
-            "trace": {
-                "session_id": session_id,
-                "current_user_message": user_message,
-                "retrieved_chunks": [],
-                "tool_calls": [],
-                "tool_results": [],
-                "llm_raw_response": abstention_msg,
-                "final_response": abstention_msg.replace("[HANDOFF: TRUE]", "").strip(),
-                "sources": [],
-                "handoff_triggered": True,
-                "fallback_triggered": False,
-                "errors": []
-            }
-        }
-
     # 14. RAG Retrieval
     retrieved_chunks = _retriever.retrieve(user_message, top_k=4)
     print(f"[DEBUG] Retrieved chunks: {len(retrieved_chunks)}")
-    
-    # If no relevant chunks meet the similarity score floor (0.33) and we are not doing a tool lookup, abstain cleanly
-    if not retrieved_chunks and not current_order_id:
-        abstention_msg = "I apologize, but I do not have specific background information regarding that topic in our document database. I can assist you with order lookups, returns, shipping, product care, or warranty questions."
-        add_message_to_session(session_id, "user", user_message)
-        add_message_to_session(session_id, "assistant", abstention_msg)
-        return {
-            "response": abstention_msg,
-            "sources": [],
-            "handoff": False,
-            "trace": {
-                "session_id": session_id,
-                "current_user_message": user_message,
-                "retrieved_chunks": [],
-                "tool_calls": [],
-                "tool_results": [],
-                "llm_raw_response": abstention_msg,
-                "final_response": abstention_msg,
-                "sources": [],
-                "handoff_triggered": False,
-                "fallback_triggered": False,
-                "errors": []
-            }
-        }
 
     # 15. Programmatic Conflict Handling (Breeze Tumbler)
     has_conflict, conflict_desc = detect_source_conflict(retrieved_chunks, user_message)
@@ -830,7 +781,10 @@ Order Lookup Results:
         context_str += f"\n{tool_context_str}"
         
     guidance_tip = ""
-    if "germany" in user_message.lower():
+    # If no relevant chunks meet the similarity score floor (0.33) and we are not doing a tool lookup, let the LLM handle abstention
+    if not retrieved_chunks and not current_order_id:
+        guidance_tip = "[IMPORTANT] Since there is no retrieved context, you must abstain. If the query asks about product specifications, materials, policies, or order details, state that you lack information and connect to a human support specialist, ending with [HANDOFF: TRUE]. If the query is a general business/history overview query, state that you do not have specific background information and recommend order/shipping/returns questions, ending with [HANDOFF: FALSE]."
+    elif "germany" in user_message.lower():
         guidance_tip = "[IMPORTANT] The user is asking about shipping to Germany. You must explicitly state that shipping to Germany is not currently available and that we only ship to Canada. Cite 06-international-shipping.md."
     elif "warranty" in user_message.lower():
         guidance_tip = "[IMPORTANT] Be specific about warranty periods. Bags have a 2-year warranty from purchase, drinkware has 1 year, and travel accessories have 1 year. Explicitly list these periods. Clearly state that accidental damage, cosmetic wear, or ordinary wear and tear is not covered by the warranty. Cite 07-warranty.md."
@@ -858,9 +812,25 @@ Order Lookup Results:
         
     # Clean response and ensure no hyphens in "final sale"
     response_text = response_text.replace("**", "").replace("final-sale", "final sale").replace("Final-sale", "final sale")
-    if "warranty" in user_message.lower() and "wear" not in response_text.lower():
-        response_text += "\nNote: Accidental damage, cosmetic wear, or ordinary wear and tear is not covered under the limited warranty."
     
+    # Grounded Warranty Exclusions Check (scanning retrieved chunks for wear clauses)
+    if "warranty" in user_message.lower() and "wear" not in response_text.lower():
+        has_wear_clause = False
+        wear_sentence = ""
+        for chk in retrieved_chunks:
+            text_val = chk.get("text", "")
+            if "wear" in text_val.lower() or "cosmetic" in text_val.lower():
+                has_wear_clause = True
+                # Extract sentence containing wear/cosmetic
+                for sentence in text_val.split("."):
+                    if "wear" in sentence.lower() or "cosmetic" in sentence.lower():
+                        wear_sentence = sentence.strip()
+                        break
+                if wear_sentence:
+                    break
+        if has_wear_clause and wear_sentence:
+            response_text += f"\nNote: {wear_sentence}."
+            
     # Resolve human handoff markers
     handoff_allowed = (
         is_mutation_action or 
@@ -868,13 +838,41 @@ Order Lookup Results:
         is_privacy_request or 
         is_gift_card_refund_query or 
         is_price_adjustment_query or 
-        tool_handoff_override or
-        "vegan" in user_message.lower() or
-        "germany" in user_message.lower()
+        tool_handoff_override
     )
     
+    # Or, if the LLM response itself indicates insufficient information/evidence to answer a customer support topic
+    response_lower = response_text.lower()
+    insufficient_info_patterns = [
+        "insufficient", 
+        "not enough information", 
+        "lack enough information", 
+        "lacks enough information",
+        "do not have enough information",
+        "unable to confirm",
+        "do not have specific information",
+        "not mentioned",
+        "not specified",
+        "no information",
+        "not have information",
+        "lacks information",
+        "does not mention",
+        "do not have information",
+        "not find information",
+        "cannot confirm"
+    ]
+    if any(p in response_lower for p in insufficient_info_patterns):
+        handoff_allowed = True
+    
     handoff = tool_handoff_override or get_session_handoff(session_id)
-    if "[HANDOFF: TRUE]" in response_text or "HANDOFF: TRUE" in response_text:
+    llm_requested_handoff = (
+        "[HANDOFF: TRUE]" in response_text or 
+        "HANDOFF: TRUE" in response_text or
+        "human support" in response_lower or
+        "human specialist" in response_lower or
+        "support specialist" in response_lower
+    )
+    if llm_requested_handoff:
         if handoff_allowed:
             handoff = True
         response_text = response_text.replace("[HANDOFF: TRUE]", "").replace("HANDOFF: TRUE", "").strip()

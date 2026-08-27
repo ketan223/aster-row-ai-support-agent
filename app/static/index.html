@@ -179,6 +179,12 @@
                 scrollToBottom();
             }, [messages, loading, showDebug]);
 
+            useEffect(() => {
+                if (!loading) {
+                    inputRef.current?.focus();
+                }
+            }, [loading]);
+
             const scrollToBottom = () => {
                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             };

@@ -7,7 +7,7 @@ A highly reliable, production-ready Retrieval-Augmented Generation (RAG) custome
 ## Demo Video & UI Preview
 
 ### Click-to-Play Demo Video
-[![Aster & Row AI Agent Demo](https://img.shields.io/badge/Demo-Play%20Video-blue?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=dQw4w9WgXcQ) *(Replace with actual demo video link or refer to local demo.mp4)*
+[![Aster & Row AI Agent Demo](https://img.shields.io/badge/Demo-Play%20Video-blue?style=for-the-badge&logo=googledrive)](https://drive.google.com/file/d/1C3l6THo9X0hgFe7_3U9Y3DR0WkUhl_FI/view)
 
 ### Static Web Interface Mockup
 A polished, modern chat client with a real-time developer observability trace sidebar:

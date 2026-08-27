@@ -132,11 +132,11 @@
         // Displays citation cards for source verification.
         function CitationCard({ source }) {
             return (
-                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-100 border border-slate-200 text-xs text-slate-600 font-medium mr-1.5 mb-1.5 hover:bg-slate-200 transition-colors">
-                    <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-500"></i>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-100 border border-slate-200 text-xs text-slate-600 font-medium mr-1.5 mb-1.5 hover:bg-slate-200 transition-colors">
+                    <i data-lucide="file-text" className="w-3.5 h-3.5 text-slate-500"></i>
                     <span>{source.file}</span>
-                    <span class="text-slate-400 font-normal">|</span>
-                    <span class="text-slate-500 italic">{source.heading}</span>
+                    <span className="text-slate-400 font-normal">|</span>
+                    <span className="text-slate-500 italic">{source.heading}</span>
                 </div>
             );
         }
@@ -271,26 +271,26 @@
             };
 
             return (
-                <div class="flex-1 flex overflow-hidden">
+                <div className="flex-1 flex overflow-hidden">
                     {/* Main Chat Interface */}
-                    <div class={`flex-1 flex flex-col h-full ${t.bg} transition-all duration-300 ${showDebug ? 'pr-0 lg:pr-[400px]' : ''}`}>
+                    <div className={`flex-1 flex flex-col h-full ${t.bg} transition-all duration-300 ${showDebug ? 'pr-0 lg:pr-[400px]' : ''}`}>
                         {/* Header */}
-                        <header class={`h-16 px-6 ${t.headerBg} border-b flex items-center justify-between shrink-0 shadow-sm`}>
-                            <div class="flex items-center gap-3">
-                                <div class={`w-9 h-9 rounded-lg ${t.logoBg} flex items-center justify-center font-bold text-lg shadow-sm`}>
+                        <header className={`h-16 px-6 ${t.headerBg} border-b flex items-center justify-between shrink-0 shadow-sm`}>
+                            <div className="flex items-center gap-3">
+                                <div className={`w-9 h-9 rounded-lg ${t.logoBg} flex items-center justify-center font-bold text-lg shadow-sm`}>
                                     A
                                 </div>
                                 <div>
-                                    <h1 class={`text-sm font-semibold ${t.headerText}`}>Aster & Row</h1>
-                                    <p class={`text-xs ${t.accentText} flex items-center gap-1`}>
-                                        <span class={`w-1.5 h-1.5 rounded-full ${t.accentDot} inline-block`}></span>
+                                    <h1 className={`text-sm font-semibold ${t.headerText}`}>Aster & Row</h1>
+                                    <p className={`text-xs ${t.accentText} flex items-center gap-1`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${t.accentDot} inline-block`}></span>
                                         Support Assistant
                                     </p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <div class="flex items-center gap-1 mr-1">
-                                    <i data-lucide="palette" class="w-3.5 h-3.5 text-slate-400"></i>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1 mr-1">
+                                    <i data-lucide="palette" className="w-3.5 h-3.5 text-slate-400"></i>
                                     <select 
                                         value={themeName} 
                                         onChange={e => {
@@ -298,7 +298,7 @@
                                             setThemeName(newTheme);
                                             localStorage.setItem('ar_theme_name', newTheme);
                                         }}
-                                        class="bg-white border border-slate-200 text-[11px] font-medium rounded-md px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-slate-500 text-slate-700"
+                                        className="bg-white border border-slate-200 text-[11px] font-medium rounded-md px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-slate-500 text-slate-700"
                                     >
                                         <option value="default">Default</option>
                                         <option value="ocean">Ocean Blue</option>
@@ -312,43 +312,43 @@
                                 </div>
                                 <button 
                                     onClick={handleReset}
-                                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
                                     title="Reset current conversation"
                                 >
-                                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                                    <i data-lucide="rotate-ccw" className="w-3.5 h-3.5"></i>
                                     <span>New Chat</span>
                                 </button>
                                 <button 
                                     onClick={() => setShowDebug(!showDebug)}
-                                    class={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${showDebug ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800' : 'text-slate-600 border-slate-200 hover:bg-slate-100'}`}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${showDebug ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800' : 'text-slate-600 border-slate-200 hover:bg-slate-100'}`}
                                 >
-                                    <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
+                                    <i data-lucide="terminal" className="w-3.5 h-3.5"></i>
                                     <span>Debug Trace</span>
                                 </button>
                             </div>
                         </header>
 
                         {/* Chat Messages scroll area */}
-                        <div class="flex-1 overflow-y-auto px-6 py-6 chat-scroll flex flex-col gap-4">
+                        <div className="flex-1 overflow-y-auto px-6 py-6 chat-scroll flex flex-col gap-4">
                             {messages.map(msg => (
                                 <div 
                                     key={msg.id} 
-                                    class={`flex flex-col max-w-[80%] ${msg.role === 'user' ? 'self-end items-end' : 'self-start items-start'}`}
+                                    className={`flex flex-col max-w-[80%] ${msg.role === 'user' ? 'self-end items-end' : 'self-start items-start'}`}
                                 >
                                     {/* Message box */}
-                                    <div class={`px-4 py-3 rounded-2xl shadow-sm leading-relaxed text-sm ${
+                                    <div className={`px-4 py-3 rounded-2xl shadow-sm leading-relaxed text-sm ${
                                         msg.role === 'user' 
                                             ? `${t.bubbleUser} rounded-tr-none` 
                                             : msg.error 
                                                 ? 'bg-red-50 text-red-800 border border-red-200 rounded-tl-none'
                                                 : `${t.bubbleAssistant} rounded-tl-none`
                                     }`}>
-                                        <p class="whitespace-pre-wrap">{msg.content}</p>
+                                        <p className="whitespace-pre-wrap">{msg.content}</p>
                                     </div>
                                     
                                     {/* Citations/sources when present */}
                                     {msg.sources && msg.sources.length > 0 && (
-                                        <div class="mt-2 flex flex-wrap gap-1">
+                                        <div className="mt-2 flex flex-wrap gap-1">
                                             {msg.sources.map((s, idx) => (
                                                 <CitationCard key={`${s.file}-${s.heading}-${idx}`} source={s} />
                                             ))}
@@ -357,11 +357,11 @@
 
                                     {/* Alert for Human Escalation */}
                                     {msg.handoff && (
-                                        <div class="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 max-w-lg">
-                                            <i data-lucide="user-cog" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+                                        <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 max-w-lg">
+                                            <i data-lucide="user-cog" className="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
                                             <div>
-                                                <h4 class="text-xs font-semibold text-amber-800">Human Assistance Recommended</h4>
-                                                <p class="text-[11px] text-amber-700 mt-0.5 leading-normal">
+                                                <h4 className="text-xs font-semibold text-amber-800">Human Assistance Recommended</h4>
+                                                <p className="text-[11px] text-amber-700 mt-0.5 leading-normal">
                                                     An operational issue or policy conflict has been flagged. Human support will verify and process the resolution.
                                                 </p>
                                             </div>
@@ -371,10 +371,10 @@
                             ))}
                             
                             {loading ? (
-                                <div key="loading-indicator" translate="no" class="self-start flex items-center gap-1.5 px-4 py-3 rounded-2xl bg-white border border-slate-200 rounded-tl-none shadow-sm">
-                                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce"></span>
-                                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]"></span>
-                                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:0.4s]"></span>
+                                <div key="loading-indicator" translate="no" className="self-start flex items-center gap-1.5 px-4 py-3 rounded-2xl bg-white border border-slate-200 rounded-tl-none shadow-sm">
+                                    <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce"></span>
+                                    <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]"></span>
+                                    <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:0.4s]"></span>
                                 </div>
                             ) : null}
 
@@ -382,26 +382,26 @@
                         </div>
 
                         {/* Input Area */}
-                        <div class={`p-4 ${t.headerBg} border-t shrink-0 shadow-inner`}>
-                            <form onSubmit={handleSend} class="flex items-center gap-2 max-w-4xl mx-auto">
+                        <div className={`p-4 ${t.headerBg} border-t shrink-0 shadow-inner`}>
+                            <form onSubmit={handleSend} className="flex items-center gap-2 max-w-4xl mx-auto">
                                 <input
                                     type="text"
                                     value={input}
                                     onChange={e => setInput(e.target.value)}
                                     placeholder="Ask a question about shipping, returns, order statuses, or products..."
                                     disabled={loading}
-                                    class={`flex-1 px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 ${t.bg} focus:bg-white text-sm transition-all`}
+                                    className={`flex-1 px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 ${t.bg} focus:bg-white text-sm transition-all`}
                                 />
                                 <button
                                     type="submit"
                                     disabled={loading || !input.trim()}
-                                    class={`px-4 py-2.5 ${t.btnPrimary} rounded-xl font-medium text-sm transition-colors flex items-center gap-2 shadow disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    className={`px-4 py-2.5 ${t.btnPrimary} rounded-xl font-medium text-sm transition-colors flex items-center gap-2 shadow disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
-                                    <i data-lucide="send" class="w-4 h-4"></i>
+                                    <i data-lucide="send" className="w-4 h-4"></i>
                                     <span>Send</span>
                                 </button>
                             </form>
-                            <p class="text-center text-[10px] text-slate-400 mt-2">
+                            <p className="text-center text-[10px] text-slate-400 mt-2">
                                 Aster & Row support bot checks order records and company documents to assist you.
                             </p>
                         </div>
@@ -409,81 +409,81 @@
 
                     {/* Developer Observability slideout */}
                     {showDebug && (
-                        <div class="w-full lg:w-[400px] h-full bg-slate-900 border-l border-slate-800 flex flex-col text-slate-300 shrink-0 absolute right-0 top-0 shadow-2xl z-20 lg:relative">
-                            <header class="h-16 px-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-950">
-                                <div class="flex items-center gap-2">
-                                    <i data-lucide="activity" class="w-5 h-5 text-emerald-500 animate-pulse"></i>
-                                    <h2 class="text-sm font-semibold text-slate-100">Live Agent Observability Trace</h2>
+                        <div className="w-full lg:w-[400px] h-full bg-slate-900 border-l border-slate-800 flex flex-col text-slate-300 shrink-0 absolute right-0 top-0 shadow-2xl z-20 lg:relative">
+                            <header className="h-16 px-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-950">
+                                <div className="flex items-center gap-2">
+                                    <i data-lucide="activity" className="w-5 h-5 text-emerald-500 animate-pulse"></i>
+                                    <h2 className="text-sm font-semibold text-slate-100">Live Agent Observability Trace</h2>
                                 </div>
                                 <button 
                                     onClick={() => setShowDebug(false)}
-                                    class="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+                                    className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
                                 >
-                                    <i data-lucide="x" class="w-5 h-5"></i>
+                                    <i data-lucide="x" className="w-5 h-5"></i>
                                 </button>
                             </header>
 
-                            <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 text-xs font-mono">
+                            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 text-xs font-mono">
                                 {!debugTrace ? (
-                                    <div class="text-center text-slate-500 py-12">
-                                        <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-600"></i>
+                                    <div className="text-center text-slate-500 py-12">
+                                        <i data-lucide="inbox" className="w-8 h-8 mx-auto mb-2 text-slate-600"></i>
                                         <p>Send a message to see the pipeline execution trace details.</p>
                                     </div>
                                 ) : (
                                     <React.Fragment>
                                         <div>
-                                            <span class="text-emerald-500 font-semibold">[Session ID]</span>
-                                            <div class="bg-slate-950 p-2.5 rounded mt-1 text-[11px] text-slate-400 break-all select-all">{debugTrace.session_id}</div>
+                                            <span className="text-emerald-500 font-semibold">[Session ID]</span>
+                                            <div className="bg-slate-950 p-2.5 rounded mt-1 text-[11px] text-slate-400 break-all select-all">{debugTrace.session_id}</div>
                                         </div>
 
                                         <div>
-                                            <span class="text-blue-400 font-semibold">[Retrieved RAG Passages]</span>
-                                            <div class="flex flex-col gap-2 mt-1">
+                                            <span className="text-blue-400 font-semibold">[Retrieved RAG Passages]</span>
+                                            <div className="flex flex-col gap-2 mt-1">
                                                 {debugTrace.retrieved_chunks && debugTrace.retrieved_chunks.map((chk, i) => (
-                                                    <div key={i} class="bg-slate-950 p-2 rounded border border-slate-800">
-                                                        <div class="text-slate-400 flex justify-between font-bold border-b border-slate-800 pb-1 mb-1">
-                                                            <span class="truncate max-w-[200px]">{chk.filename}</span>
-                                                            <span class="text-emerald-500 font-semibold">{(chk.score * 100).toFixed(1)}%</span>
+                                                    <div key={i} className="bg-slate-950 p-2 rounded border border-slate-800">
+                                                        <div className="text-slate-400 flex justify-between font-bold border-b border-slate-800 pb-1 mb-1">
+                                                            <span className="truncate max-w-[200px]">{chk.filename}</span>
+                                                            <span className="text-emerald-500 font-semibold">{(chk.score * 100).toFixed(1)}%</span>
                                                         </div>
-                                                        <div class="text-slate-500 italic mb-1">Heading: {chk.heading}</div>
-                                                        <div class="text-slate-300 leading-normal line-clamp-4 hover:line-clamp-none transition-all duration-300">{chk.text}</div>
+                                                        <div className="text-slate-500 italic mb-1">Heading: {chk.heading}</div>
+                                                        <div className="text-slate-300 leading-normal line-clamp-4 hover:line-clamp-none transition-all duration-300">{chk.text}</div>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
 
                                         <div>
-                                            <span class="text-purple-400 font-semibold">[Tool Calls & Execution]</span>
-                                            <div class="mt-1 flex flex-col gap-1.5">
+                                            <span className="text-purple-400 font-semibold">[Tool Calls & Execution]</span>
+                                            <div className="mt-1 flex flex-col gap-1.5">
                                                 {debugTrace.tool_calls && debugTrace.tool_calls.length > 0 ? (
                                                     debugTrace.tool_calls.map((tc, idx) => (
-                                                        <div key={idx} class="bg-slate-950 p-2.5 rounded border border-slate-800">
-                                                            <div class="text-amber-500 font-bold">Tool: {tc.name}</div>
-                                                            <div class="text-slate-400 mt-0.5">Args: {JSON.stringify(tc.arguments)}</div>
-                                                            <div class="text-emerald-600 mt-1 font-bold">Sanitized Tool Output:</div>
-                                                            <pre class="bg-slate-900 p-1.5 rounded text-[10px] text-slate-400 overflow-x-auto whitespace-pre mt-1">
+                                                        <div key={idx} className="bg-slate-950 p-2.5 rounded border border-slate-800">
+                                                            <div className="text-amber-500 font-bold">Tool: {tc.name}</div>
+                                                            <div className="text-slate-400 mt-0.5">Args: {JSON.stringify(tc.arguments)}</div>
+                                                            <div className="text-emerald-600 mt-1 font-bold">Sanitized Tool Output:</div>
+                                                            <pre className="bg-slate-900 p-1.5 rounded text-[10px] text-slate-400 overflow-x-auto whitespace-pre mt-1">
                                                                 {JSON.stringify(JSON.parse(debugTrace.tool_results[idx]), null, 2)}
                                                             </pre>
                                                         </div>
                                                     ))
                                                 ) : (
-                                                    <div class="text-slate-600 bg-slate-950 p-2 rounded">No tool execution occurred this turn.</div>
+                                                    <div className="text-slate-600 bg-slate-950 p-2 rounded">No tool execution occurred this turn.</div>
                                                 )}
                                             </div>
                                         </div>
 
                                         <div>
-                                            <span class="text-yellow-500 font-semibold">[Triggers & Observability Metrics]</span>
-                                            <div class="bg-slate-950 p-2.5 rounded mt-1 flex flex-col gap-1.5">
-                                                <div class="flex justify-between">
-                                                    <span class="text-slate-500">Human Handoff:</span>
-                                                    <span class={debugTrace.handoff_triggered ? 'text-amber-500 font-bold' : 'text-slate-600'}>
+                                            <span className="text-yellow-500 font-semibold">[Triggers & Observability Metrics]</span>
+                                            <div className="bg-slate-950 p-2.5 rounded mt-1 flex flex-col gap-1.5">
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">Human Handoff:</span>
+                                                    <span className={debugTrace.handoff_triggered ? 'text-amber-500 font-bold' : 'text-slate-600'}>
                                                         {debugTrace.handoff_triggered ? 'YES' : 'NO'}
                                                     </span>
                                                 </div>
-                                                <div class="flex justify-between">
-                                                    <span class="text-slate-500">Fallback Provider:</span>
-                                                    <span class={debugTrace.fallback_triggered ? 'text-red-500 font-bold' : 'text-slate-600'}>
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">Fallback Provider:</span>
+                                                    <span className={debugTrace.fallback_triggered ? 'text-red-500 font-bold' : 'text-slate-600'}>
                                                         {debugTrace.fallback_triggered ? 'YES' : 'NO'}
                                                     </span>
                                                 </div>

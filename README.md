@@ -200,6 +200,30 @@ The evaluation suite consists of 15 visible cases (from evaluation/visible-cases
 * **Fix**: Implemented a pre-emptive regex status query check. If the user asks about order status or tracking, and no order ID is extracted or cached in the session, the agent returns a request for their order ID and does not call any tools.
 * **Regression test**: `tests/test_regression.py::test_generic_order_tracking_regression`.
 
+### Bug 6: Handoff False Positive on Standard LLM Answers
+* **How to reproduce**: Submit standard informational queries (like price adjustment rules, order statuses, or TrailPlus shipping details).
+* **Root cause**: Handoff detection was checking the LLM's final response text for semantic courtesy phrases (e.g. `"I recommend speaking to a human specialist"` or `"connect you with a human"`). The Mistral model naturally appends these courtesy phrases to customer support replies as conversational filler, causing the system to trigger a human handoff false positive on almost all responses.
+* **Fix**: Removed LLM output semantic pattern parsing from handoff checks. The handoff state is now determined strictly by pre-generation business logic signals (explicit mutations, safety/privacy blocks, care conflict, and RAG retrieval score classifier) BEFORE LLM response generation.
+* **Regression test**: `tests/test_behavioral.py::test_custom_scenarios` (which tests price-adjustments, refund explanations, and shipping details without handoff).
+
+### Bug 7: Missing Package Query Hallucinated Advice
+* **How to reproduce**: Query `"it hasn't arrived yet, what should I do"` (either with or without a cached order ID in the session).
+* **Root cause**: No policy document in the knowledge base specifies a missing package reporting policy. On this query, the agent either returned irrelevant RAG chunks with hallucinations (e.g. tracking check instructions, report within 7 days) or did not route to handoff correctly because of pronoun tracking keyword boundaries failing to match `"arrived"`.
+* **Fix**: Simplified pronoun tracking to match semantic order-tracking phrases generically. If a missing package query is sent without an order ID, the agent requests the order ID first. If an order ID is present, the agent prints the database tracking details, states that no separate missing-package policy exists in the documents, and triggers `handoff: True` for human support without hallucinating custom tracking walkthroughs.
+* **Regression test**: `tests/test_regression.py::test_missing_package_no_hallucination`.
+
+### Bug 8: Price Adjustment Handoff False Positive
+* **How to reproduce**: Submit a policy query like `"what is the price adjustment window?"`.
+* **Root cause**: The mutation keyword checker looked for the word `"adjust"` to identify if the user was requesting a price adjustment. This created a substring clash with the word `"adjustment"`, causing standard price adjustment policy inquiries to be treated as mutation actions and falsely routed to handoff.
+* **Fix**: Updated mutation keyword checks to use word-boundary checks (`\b`) via regex, verifying the user is asking to *get*, *apply*, or *request* a price adjustment rather than asking about general policy definitions.
+* **Regression test**: Verified manually on policy queries (like `"what is the price adjustment window?"`) resulting in `Handoff: False`.
+
+### Bug 9: Privacy Refusal Citation Leak
+* **How to reproduce**: Query confidential customer details like `"what is the risk score for this customer?"`.
+* **Root cause**: When the LLM successfully refused to disclose customer details, it still appended the source citations from retrieved irrelevant RAG context chunks (e.g. `Source: 04-damaged-or-wrong-items.md — Reporting window`).
+* **Fix**: Forced `sources: []` and cleared cited sources from the return trace when a privacy block or hard refusal is triggered.
+* **Regression test**: `tests/test_regression.py::test_privacy_refusal_citation_leak`.
+
 ---
 
 ## 8. Known Limitations & Next Steps

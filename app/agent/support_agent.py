@@ -391,7 +391,7 @@ def run_agent_turn(session_id: str, user_message: str) -> dict:
         }
 
     # 11. Pre-emptive Gift Card Checks (Refund or Balance)
-    is_gift_card_refund_query = "gift card" in user_message.lower() and any(w in user_message.lower() for w in ["refund", "return", "cancel", "buy", "purchase", "balance", "code", "check", "share"])
+    is_gift_card_refund_query = "gift card" in user_message.lower() and any(w in user_message.lower() for w in ["refund", "return", "cancel", "balance", "code", "check", "share"])
     if is_gift_card_refund_query:
         gift_card_msg = "Gift cards are final sale and cannot be returned or refunded. Additionally, according to our policy, you must not share a complete gift-card code in chat. Let me connect you with a human support specialist to assist you further. [HANDOFF: TRUE]"
         set_session_handoff(session_id, True)
@@ -742,13 +742,13 @@ You MUST explicitly mention the carrier ({ord_data['carrier']}), the order statu
                 "errors": []
             }
         }
-    elif ("refund" in user_message.lower() and any(w in user_message.lower() for w in ["approve", "process", "issue", "give", "complete", "override", "do", "get", "claim", "request"])) or ("return" in user_message.lower() and "approve" in user_message.lower()):
+    elif ("refund" in user_message.lower() and any(re.search(r'\b' + re.escape(w) + r'\b', user_message.lower()) for w in ["approve", "process", "issue", "give", "complete", "override", "do", "get", "claim", "request"])) or ("return" in user_message.lower() and "approve" in user_message.lower()):
         is_mutation_action = True
         mutation_explanation = "I cannot approve or complete refunds or returns. All returns must be inspected at our warehouse, and any exceptions or overrides require human support review. Let me connect you with a human support specialist. [HANDOFF: TRUE]"
-    elif "address" in user_message.lower() and any(w in user_message.lower() for w in ["change", "update", "correct", "edit"]):
+    elif "address" in user_message.lower() and any(re.search(r'\b' + re.escape(w) + r'\b', user_message.lower()) for w in ["change", "update", "correct", "edit"]):
         is_mutation_action = True
         mutation_explanation = "Address corrections can only be requested within 30 minutes while an order is pending, and must be completed by a human support specialist. I cannot change your address. Let me connect you with a human specialist. [HANDOFF: TRUE]"
-    elif "price adjustment" in user_message.lower() or "price match" in user_message.lower():
+    elif ("price adjustment" in user_message.lower() or "price match" in user_message.lower()) and any(re.search(r'\b' + re.escape(w) + r'\b', user_message.lower()) for w in ["get", "request", "claim", "apply", "process", "do", "receive", "want", "adjust"]):
         is_mutation_action = True
         mutation_explanation = "Price adjustments must be reviewed and processed by a human support specialist. Customers may request one price adjustment within 7 calendar days of the original purchase. Let me connect you with a specialist. [HANDOFF: TRUE]"
     elif "warranty" in user_message.lower() and any(w in user_message.lower() for w in ["claim", "approve", "defect"]):
@@ -886,8 +886,6 @@ You MUST explicitly mention the carrier ({ord_data['carrier']}), the order statu
         is_mutation_action or 
         has_conflict or 
         is_privacy_request or 
-        is_gift_card_refund_query or 
-        is_price_adjustment_query or 
         tool_handoff_override or
         is_insufficient_info_handoff or
         get_session_handoff(session_id)

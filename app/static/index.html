@@ -350,7 +350,7 @@
                                     {msg.sources && msg.sources.length > 0 && (
                                         <div class="mt-2 flex flex-wrap gap-1">
                                             {msg.sources.map((s, idx) => (
-                                                <CitationCard key={idx} source={s} />
+                                                <CitationCard key={`${s.file}-${s.heading}-${idx}`} source={s} />
                                             ))}
                                         </div>
                                     )}
@@ -370,13 +370,13 @@
                                 </div>
                             ))}
                             
-                            {loading && (
-                                <div class="self-start flex items-center gap-1.5 px-4 py-3 rounded-2xl bg-white border border-slate-200 rounded-tl-none shadow-sm">
+                            {loading ? (
+                                <div key="loading-indicator" translate="no" class="self-start flex items-center gap-1.5 px-4 py-3 rounded-2xl bg-white border border-slate-200 rounded-tl-none shadow-sm">
                                     <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce"></span>
                                     <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]"></span>
                                     <span class="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:0.4s]"></span>
                                 </div>
-                            )}
+                            ) : null}
 
                             <div ref={messagesEndRef} />
                         </div>

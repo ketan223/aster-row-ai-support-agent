@@ -160,6 +160,7 @@
             const t = themes[themeName];
 
             const messagesEndRef = useRef(null);
+            const inputRef = useRef(null);
 
             useEffect(() => {
                 // Initialize session if not present
@@ -188,6 +189,9 @@
 
                 const userMsgText = input;
                 setInput('');
+                setTimeout(() => {
+                    inputRef.current?.focus();
+                }, 50);
                 
                 // Add user message to UI
                 const newMsgId = crypto.randomUUID();
@@ -385,6 +389,7 @@
                         <div className={`p-4 ${t.headerBg} border-t shrink-0 shadow-inner`}>
                             <form onSubmit={handleSend} className="flex items-center gap-2 max-w-4xl mx-auto">
                                 <input
+                                    ref={inputRef}
                                     type="text"
                                     value={input}
                                     onChange={e => setInput(e.target.value)}

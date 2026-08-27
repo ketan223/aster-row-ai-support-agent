@@ -444,7 +444,9 @@ The following 9 genuine bugs were discovered, reproduced, diagnosed, and resolve
 ---
 
 ## 26. Demo Video / Animation
-A full recorded interactive demonstration is available:
+A full recorded interactive demonstration is available directly in the repository and hosted on Google Drive:
+
+![Aster & Row AI Agent Demo](demo.gif)
 
 [Watch the Working Demo Video (demo.mp4)](https://drive.google.com/file/d/1C3l6THo9X0hgFe7_3U9Y3DR0WkUhl_FI/view)
 

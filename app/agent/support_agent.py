@@ -63,10 +63,38 @@ def _extract_order_id(text: str) -> str:
         return f"ORD-{matches[0]}"
     return None
 
+# Classifies empty RAG queries to see if they are legitimate product support topics requiring escalation
+def classify_support_query(user_message: str) -> bool:
+    classify_prompt = f"""You are a query classifier. Your job is to classify the user's message into one of two categories:
+'A': Legitimate customer support questions regarding product specifications, materials (such as vegan, waterproof, fabrics, leather, adhesives, zippers), policies, order status, shipping, or returns where information might be missing or insufficient in the documentation.
+'B': General background queries about company overview, history, founders, mission, or completely unrelated general conversation/chit-chat.
+
+Examples:
+- "Are all fabrics and adhesives in your bags vegan?" -> A
+- "what is your company about?" -> B
+- "Can you suggest a water bottle model?" -> B
+- "Tell me about your return policy" -> B
+
+User Message: "{user_message}"
+
+Reply with exactly one letter: 'A' or 'B'. Do not include any other text or punctuation.
+"""
+    try:
+        provider = get_llm_provider()
+        response = provider.chat([{"role": "user", "content": classify_prompt}])
+        res_char = response.strip().upper().replace("'", "").replace('"', "")
+        if "A" in res_char:
+            return True
+        return False
+    except Exception:
+        return False
+
 # Processes a customer conversation turn, resolving order contexts, safety policies,
 # conflicts, and formatting citations.
 def run_agent_turn(session_id: str, user_message: str) -> dict:
     history = get_session_history(session_id)
+    tool_handoff_override = False
+    is_insufficient_info_handoff = False
     
     # Debug trace prints
     print(f"\n[DEBUG] Session ID: {session_id} | Chunks in store: {len(_vector_store.chunks)}")
@@ -270,8 +298,8 @@ def run_agent_turn(session_id: str, user_message: str) -> dict:
     current_order_id = _extract_order_id(user_message)
     
     # Check if we should resolve pronouns/references using session context
-    order_status_keywords = ["where is", "when will", "status", "track", "tracking", "arrive", "delivery", "get here"]
-    is_order_status_query = any(re.search(r'\b' + re.escape(w) + r'\b', user_message.lower()) for w in order_status_keywords) or any(w in user_message.lower() for w in ["where is my order", "order status", "track my order", "track order"])
+    order_status_keywords = ["where is", "when will", "status", "track", "tracking", "arrive", "arrived", "delivery", "delivered", "get here", "haven't received", "hasn't arrived", "not arrived", "not here"]
+    is_order_status_query = any(w in user_message.lower() for w in order_status_keywords)
     
     if not current_order_id and is_order_status_query:
         current_order_id = _session_last_order.get(session_id)
@@ -475,14 +503,19 @@ def run_agent_turn(session_id: str, user_message: str) -> dict:
         tool_context_str += f"- Customer Safe Message: {ord_data['customer_safe_message']}\n"
         tool_context_str += f"- Membership Tier: {ord_data['membership_tier']}\n"
         
+        is_missing_package_query = any(w in user_message.lower() for w in ["not arrive", "hasn't arrived", "not here", "missing", "lost", "where is my package", "what should i do"])
+        tool_handoff_override = is_missing_package_query
+        
         lookup_system_prompt = f"""You are the official customer support AI assistant for Aster & Row.
 Answer the customer's order status or tracking query using ONLY the provided order lookup results below.
 Do NOT cite any files or documents. Do NOT make up any details.
 You MUST explicitly mention the carrier ({ord_data['carrier']}), the order status ({ord_data['status']}), and the estimated delivery ({delivery_date_str}).
-
-Order Lookup Results:
-{tool_context_str}
 """
+        if is_missing_package_query:
+            lookup_system_prompt += "\n[IMPORTANT] The customer is asking what to do because their package hasn't arrived or is late. You must strictly state only the order status facts (carrier, tracking number, status, estimated delivery) and state that we do not have a separate missing package policy in our documents. Recommend speaking to human support for further assistance. Do NOT invent any instructions, reporting windows, or tracking walkthroughs."
+            
+        lookup_system_prompt += f"""\n\nOrder Lookup Results:\n{tool_context_str}"""
+        
         provider = get_llm_provider()
         temp_messages = list(get_session_history(session_id))
         temp_messages.append({"role": "user", "content": user_message})
@@ -518,8 +551,10 @@ Order Lookup Results:
         if addons:
             response_text += " (" + ", ".join(addons) + ")"
             
-        handoff = get_session_handoff(session_id)
-        
+        handoff = get_session_handoff(session_id) or tool_handoff_override
+        if handoff:
+            set_session_handoff(session_id, True)
+            
         add_message_to_session(session_id, "user", user_message)
         add_message_to_session(session_id, "assistant", response_text)
         
@@ -545,6 +580,20 @@ Order Lookup Results:
     # 14. RAG Retrieval
     retrieved_chunks = _retriever.retrieve(user_message, top_k=4)
     print(f"[DEBUG] Retrieved chunks: {len(retrieved_chunks)}")
+    
+    # Pre-generation check: determine if there is an insufficient info/evidence signal
+    if not retrieved_chunks and not current_order_id:
+        is_insufficient_info_handoff = classify_support_query(user_message)
+        
+    missing_keywords = ["vegan", "waterproof", "leather", "not arrive", "hasn't arrived", "not here", "missing", "lost", "where is my package", "what should i do"]
+    for kw in missing_keywords:
+        if kw in user_message.lower():
+            if any(w in kw for w in ["arrive", "here", "missing", "lost", "package"]):
+                is_insufficient_info_handoff = True
+            else:
+                present_in_context = any(kw in chk.get("text", "").lower() for chk in retrieved_chunks)
+                if not present_in_context:
+                    is_insufficient_info_handoff = True
 
     # 15. Programmatic Conflict Handling (Breeze Tumbler)
     has_conflict, conflict_desc = detect_source_conflict(retrieved_chunks, user_message)
@@ -693,7 +742,7 @@ Order Lookup Results:
                 "errors": []
             }
         }
-    elif "refund" in user_message.lower() or ("return" in user_message.lower() and "approve" in user_message.lower()):
+    elif ("refund" in user_message.lower() and any(w in user_message.lower() for w in ["approve", "process", "issue", "give", "complete", "override", "do", "get", "claim", "request"])) or ("return" in user_message.lower() and "approve" in user_message.lower()):
         is_mutation_action = True
         mutation_explanation = "I cannot approve or complete refunds or returns. All returns must be inspected at our warehouse, and any exceptions or overrides require human support review. Let me connect you with a human support specialist. [HANDOFF: TRUE]"
     elif "address" in user_message.lower() and any(w in user_message.lower() for w in ["change", "update", "correct", "edit"]):
@@ -832,50 +881,20 @@ Order Lookup Results:
             response_text += f"\nNote: {wear_sentence}."
             
     # Resolve human handoff markers
-    handoff_allowed = (
+    # Handoff is set purely and cleanly by pre-generation business logic signals!
+    handoff = (
         is_mutation_action or 
         has_conflict or 
         is_privacy_request or 
         is_gift_card_refund_query or 
         is_price_adjustment_query or 
-        tool_handoff_override
+        tool_handoff_override or
+        is_insufficient_info_handoff or
+        get_session_handoff(session_id)
     )
     
-    # Or, if the LLM response itself indicates insufficient information/evidence to answer a customer support topic
-    response_lower = response_text.lower()
-    insufficient_info_patterns = [
-        "insufficient", 
-        "not enough information", 
-        "lack enough information", 
-        "lacks enough information",
-        "do not have enough information",
-        "unable to confirm",
-        "do not have specific information",
-        "not mentioned",
-        "not specified",
-        "no information",
-        "not have information",
-        "lacks information",
-        "does not mention",
-        "do not have information",
-        "not find information",
-        "cannot confirm"
-    ]
-    if any(p in response_lower for p in insufficient_info_patterns):
-        handoff_allowed = True
-    
-    handoff = tool_handoff_override or get_session_handoff(session_id)
-    llm_requested_handoff = (
-        "[HANDOFF: TRUE]" in response_text or 
-        "HANDOFF: TRUE" in response_text or
-        "human support" in response_lower or
-        "human specialist" in response_lower or
-        "support specialist" in response_lower
-    )
-    if llm_requested_handoff:
-        if handoff_allowed:
-            handoff = True
-        response_text = response_text.replace("[HANDOFF: TRUE]", "").replace("HANDOFF: TRUE", "").strip()
+    # Strip any markers from LLM output
+    response_text = response_text.replace("[HANDOFF: TRUE]", "").replace("HANDOFF: TRUE", "").replace("[HANDOFF: FALSE]", "").replace("HANDOFF: FALSE", "").strip()
         
     if handoff:
         set_session_handoff(session_id, True)

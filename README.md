@@ -83,7 +83,7 @@ cd ai-agent-intern-test
 ```
 Requirements:
 * **Python**: `3.10` or higher
-* **Ollama** (optional local provider) or **Mistral API Key** (optional cloud provider)
+* **Mistral API Key** (Cloud LLM Provider)
 
 ---
 
@@ -131,11 +131,8 @@ cp .env.example .env
 ```
 
 Available configurations:
-* `LLM_PROVIDER`: `"mistral"` or `"ollama"` (default: `"mistral"`).
 * `MISTRAL_API_KEY`: Your Mistral developer console API key.
-* `MISTRAL_MODEL`: mistral-small-latest (default).
-* `OLLAMA_API_BASE`: `http://localhost:11434/api` (if using local Ollama).
-* `OLLAMA_MODEL`: `qwen2.5:1.5b` (or any locally downloaded Ollama model).
+* `MISTRAL_MODEL`: open-mistral-7b (default).
 
 ---
 
@@ -145,14 +142,9 @@ Available configurations:
 HOST=127.0.0.1
 PORT=8000
 
-# LLM provider configuration (ollama or mistral)
-LLM_PROVIDER=ollama
-OLLAMA_API_BASE=http://localhost:11434/api
-OLLAMA_MODEL=qwen2.5:1.5b
-
-# Optional fallback cloud provider
+# Mistral Settings
 MISTRAL_API_KEY=
-MISTRAL_MODEL=mistral-small-latest
+MISTRAL_MODEL=open-mistral-7b
 ```
 
 ---
@@ -201,8 +193,8 @@ python -m pytest
 ---
 
 ## 8. Models & Components Used
-* **LLM Tier**: Mistral AI (`mistral-small-latest`) or Ollama (`qwen2.5:1.5b` / `mistral`). swaps client backends via environment variables with zero code changes.
-* **Provider Abstraction**: Decoupled `LLMProvider` abstract base class wraps local and cloud models.
+* **LLM Tier**: Mistral AI (`open-mistral-7b`) cloud API client backend with native tool-calling support.
+* **Provider Abstraction**: Decoupled `LLMProvider` abstract base class wraps cloud completion models.
 * **UI Themes**: Responsive web interface with 8 customizable themes (**Default**, **Ocean Blue**, **Forest Green**, **Charcoal Dark**, **Instagram**, **WhatsApp**, **Telegram**, and **Facebook Messenger**).
 
 ---

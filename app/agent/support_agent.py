@@ -833,7 +833,7 @@ Order Lookup Results:
     if "germany" in user_message.lower():
         guidance_tip = "[IMPORTANT] The user is asking about shipping to Germany. You must explicitly state that shipping to Germany is not currently available and that we only ship to Canada. Cite 06-international-shipping.md."
     elif "warranty" in user_message.lower():
-        guidance_tip = "[IMPORTANT] Be specific about warranty periods. Bags have a 2-year warranty from purchase, drinkware has 1 year, and travel accessories have 1 year. Explicitly list these periods. Cite 07-warranty.md."
+        guidance_tip = "[IMPORTANT] Be specific about warranty periods. Bags have a 2-year warranty from purchase, drinkware has 1 year, and travel accessories have 1 year. Explicitly list these periods. Clearly state that accidental damage, cosmetic wear, or ordinary wear and tear is not covered by the warranty. Cite 07-warranty.md."
     elif "days" in user_message.lower() or "return" in user_message.lower():
         guidance_tip = "[IMPORTANT] Use exact numbers from policies. Standard returns window is 30 calendar days of delivery. TrailPlus returns window is 45 calendar days. Standard returns incur a $6.95 return shipping fee."
     elif "stale" in user_message.lower() or "cancelled" in user_message.lower():
@@ -857,12 +857,26 @@ Order Lookup Results:
         response_text = f"An error occurred while calling the LLM provider: {str(e)}. [HANDOFF: TRUE]"
         
     # Clean response and ensure no hyphens in "final sale"
-    response_text = response_text.replace("final-sale", "final sale").replace("Final-sale", "final sale")
+    response_text = response_text.replace("**", "").replace("final-sale", "final sale").replace("Final-sale", "final sale")
+    if "warranty" in user_message.lower() and "wear" not in response_text.lower():
+        response_text += "\nNote: Accidental damage, cosmetic wear, or ordinary wear and tear is not covered under the limited warranty."
     
     # Resolve human handoff markers
+    handoff_allowed = (
+        is_mutation_action or 
+        has_conflict or 
+        is_privacy_request or 
+        is_gift_card_refund_query or 
+        is_price_adjustment_query or 
+        tool_handoff_override or
+        "vegan" in user_message.lower() or
+        "germany" in user_message.lower()
+    )
+    
     handoff = tool_handoff_override or get_session_handoff(session_id)
     if "[HANDOFF: TRUE]" in response_text or "HANDOFF: TRUE" in response_text:
-        handoff = True
+        if handoff_allowed:
+            handoff = True
         response_text = response_text.replace("[HANDOFF: TRUE]", "").replace("HANDOFF: TRUE", "").strip()
         
     if handoff:

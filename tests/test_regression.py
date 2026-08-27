@@ -251,3 +251,52 @@ def test_privacy_refusal_no_sources_regression():
     
     # 3. Confirms handoff is triggered
     assert res["handoff"] is True, "Handoff was not triggered on privacy refusal"
+
+
+# 10. Regression Test for Price Adjustment Handoff False Positive
+def test_price_adjustment_handoff_regression():
+    """
+    Verifies that querying general policy about price adjustments (like "what is the price adjustment window?")
+    does not trigger a false-positive mutation action handoff.
+    """
+    session_id = "test-regression-price-adjustment-handoff"
+    query = "what is the price adjustment window?"
+    res = run_agent_turn(session_id, query)
+    
+    # 1. Confirms the agent correctly returns the 7 calendar days policy window
+    response_text = res["response"].lower()
+    assert "7 calendar days" in response_text
+    
+    # 2. Confirms that handoff is False (since it is a policy query, not an action request)
+    assert res["handoff"] is False, "Policy query incorrectly triggered handoff"
+
+
+# 11. Regression Test for Missing Package Policy Handoff Bug
+def test_missing_package_policy_handoff_regression():
+    """
+    Verifies that missing package queries:
+    1. Prompt for an order ID and do not hand off if no order ID is present.
+    2. Provide tracking details and trigger handoff if an order ID is present (without hallucinating UPS walkthrough advice).
+    """
+    # Test case 1: No order ID
+    session_id_1 = "test-regression-missing-no-id"
+    res_1 = run_agent_turn(session_id_1, "it hasn't arrived yet, what should I do?")
+    assert "please provide your order id" in res_1["response"].lower()
+    assert res_1["handoff"] is False, "Missing package without ID incorrectly triggered handoff"
+    
+    # Test case 2: With order ID cached in context
+    session_id_2 = "test-regression-missing-with-id"
+    # First turn: lookup ORD-1007
+    run_agent_turn(session_id_2, "where is my order ORD-1007")
+    # Second turn: ask what to do
+    res_2 = run_agent_turn(session_id_2, "it hasn't arrived yet, what should I do?")
+    response_text = res_2["response"].lower()
+    
+    # Confirms it returns tracking details from the database
+    assert "shipped" in response_text
+    assert "ups" in response_text
+    assert "1zar100700000007" in response_text
+    # Confirms it states there is no missing package policy in documents
+    assert "separate missing package policy" in response_text
+    # Confirms handoff is triggered
+    assert res_2["handoff"] is True, "Missing package with order ID failed to trigger handoff"

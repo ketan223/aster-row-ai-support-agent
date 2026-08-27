@@ -37,7 +37,6 @@
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-
         const themes = {
             default: {
                 bg: 'bg-slate-50',
@@ -49,6 +48,8 @@
                 bubbleAssistant: 'bg-white text-slate-800 border-slate-200 shadow-sm',
                 accentText: 'text-emerald-600',
                 accentDot: 'bg-emerald-500',
+                btnHeader: 'text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900',
+                btnHeaderActive: 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800',
             },
             ocean: {
                 bg: 'bg-sky-50/50',
@@ -60,6 +61,8 @@
                 bubbleAssistant: 'bg-white text-blue-900 border-blue-100 shadow-sm',
                 accentText: 'text-blue-600',
                 accentDot: 'bg-blue-500',
+                btnHeader: 'text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900',
+                btnHeaderActive: 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700',
             },
             forest: {
                 bg: 'bg-stone-50',
@@ -71,6 +74,8 @@
                 bubbleAssistant: 'bg-white text-emerald-955 border-emerald-100 shadow-sm',
                 accentText: 'text-emerald-600',
                 accentDot: 'bg-emerald-500',
+                btnHeader: 'text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900',
+                btnHeaderActive: 'bg-emerald-700 text-white border-emerald-700 hover:bg-emerald-800',
             },
             charcoal: {
                 bg: 'bg-zinc-900',
@@ -82,6 +87,8 @@
                 bubbleAssistant: 'bg-zinc-900 text-zinc-300 border-zinc-800 shadow-sm',
                 accentText: 'text-zinc-400',
                 accentDot: 'bg-zinc-500',
+                btnHeader: 'text-zinc-400 border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100',
+                btnHeaderActive: 'bg-zinc-100 text-zinc-900 border-zinc-100 hover:bg-white',
             },
             instagram: {
                 bg: 'bg-white',
@@ -93,6 +100,8 @@
                 bubbleAssistant: 'bg-[#efefef] text-slate-800 border-0 shadow-none',
                 accentText: 'text-pink-600',
                 accentDot: 'bg-pink-500',
+                btnHeader: 'text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900',
+                btnHeaderActive: 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0 hover:opacity-95',
             },
             whatsapp: {
                 bg: 'bg-[#efeae2]',
@@ -104,6 +113,8 @@
                 bubbleAssistant: 'bg-white text-slate-800 border-0 shadow-sm',
                 accentText: 'text-emerald-300',
                 accentDot: 'bg-[#25d366]',
+                btnHeader: 'text-white/85 border-white/25 hover:bg-white/10 hover:text-white',
+                btnHeaderActive: 'bg-white text-[#075e54] border-white hover:bg-white/95',
             },
             telegram: {
                 bg: 'bg-[#e7ebf0]',
@@ -115,6 +126,8 @@
                 bubbleAssistant: 'bg-white text-slate-800 border-0 shadow-sm',
                 accentText: 'text-sky-200',
                 accentDot: 'bg-[#2481cc]',
+                btnHeader: 'text-white/85 border-white/25 hover:bg-white/10 hover:text-white',
+                btnHeaderActive: 'bg-white text-[#2481cc] border-white hover:bg-white/95',
             },
             facebook: {
                 bg: 'bg-white',
@@ -126,8 +139,10 @@
                 bubbleAssistant: 'bg-[#e4e6eb] text-slate-800 border-0',
                 accentText: 'text-[#0084ff]',
                 accentDot: 'bg-[#0084ff]',
+                btnHeader: 'text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900',
+                btnHeaderActive: 'bg-[#0084ff] text-white border-[#0084ff] hover:bg-[#0073e6]',
             }
-        };
+        };};
 
         // Displays citation cards for source verification.
         function CitationCard({ source }) {
@@ -322,7 +337,7 @@
                                 </div>
                                 <button 
                                     onClick={handleReset}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${t.btnHeader}`}
                                     title="Reset current conversation"
                                 >
                                     <i data-lucide="rotate-ccw" className="w-3.5 h-3.5"></i>
@@ -330,7 +345,7 @@
                                 </button>
                                 <button 
                                     onClick={() => setShowDebug(!showDebug)}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${showDebug ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800' : 'text-slate-600 border-slate-200 hover:bg-slate-100'}`}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${showDebug ? t.btnHeaderActive : t.btnHeader}`}
                                 >
                                     <i data-lucide="terminal" className="w-3.5 h-3.5"></i>
                                     <span>Debug Trace</span>

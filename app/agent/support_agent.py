@@ -15,35 +15,75 @@ _retriever = MetadataFilterRetriever(_vector_store)
 # In-memory dictionary to track the last looked up order ID per session for pronoun resolution.
 _session_last_order = {}
 
-def is_chunk_used_in_response(chunk: dict, response_text: str) -> bool:
-    text = response_text.lower()
-    filename = chunk.get("filename", "").lower()
-    heading = chunk.get("heading", "").lower()
+def is_chunk_substantively_reflected(chunk: dict, response_text: str) -> bool:
+    response_lower = response_text.lower()
+    chunk_text = chunk.get("text", "").lower()
     
-    # Map filenames to core semantic keywords
-    keywords = []
-    if "return" in filename:
-        keywords += ["return", "refund", "exchange", "window", "day"]
-    if "warranty" in filename:
-        keywords += ["warranty", "guarantee", "cover", "repair", "defect", "year"]
-    if "shipping" in filename:
-        keywords += ["ship", "delivery", "transit", "carrier", "mail", "post", "canada"]
-    if "care" in filename or "tumbler" in filename:
-        keywords += ["care", "clean", "wash", "dishwasher", "spot-clean", "soap", "water"]
-    if "card" in filename:
-        keywords += ["card", "gift", "balance", "code"]
+    # Extract lowercase words of length >= 4
+    words = re.findall(r"\b[a-z]{4,}\b", chunk_text)
+    
+    # Exclude common stop words, fillers, and support template words
+    stop_words = {
+        "this", "that", "with", "from", "your", "have", "been", "will", "would", "about",
+        "could", "should", "their", "there", "they", "them", "then", "were", "what", "when",
+        "where", "which", "who", "whom", "whose", "why", "how", "other", "some", "only",
+        "also", "into", "than", "very", "does", "done", "must", "upon", "cannot", "unable",
+        "support", "human", "specialist", "representative", "contact", "reach", "assist",
+        "assistance", "please", "help", "under", "after", "before", "each", "every",
+        "customer", "customers", "policy", "policies", "officially", "official"
+    }
+    
+    keywords = {w for w in words if w not in stop_words}
+    if not keywords:
+        return False
         
-    # Also check if the heading words are mentioned
-    for word in heading.split():
-        if len(word) > 3 and word not in ["what", "with", "from", "your", "that"]:
-            keywords.append(word)
-            
-    return any(w in text for w in keywords) or filename in text
+    # Count unique keywords present in response_text
+    overlap_count = sum(1 for kw in keywords if kw in response_lower)
+    
+    # Require at least 2 unique keywords overlap (or 1 if the keyword set is very small, say < 3 keywords)
+    min_required = 2 if len(keywords) >= 3 else 1
+    return overlap_count >= min_required
+
+def is_chunk_used_in_response(chunk: dict, response_text: str) -> bool:
+    response_lower = response_text.lower()
+    filename = chunk.get("filename", "").lower()
+    filename_clean = filename.strip()
+    filename_no_ext = filename_clean.replace(".md", "")
+    
+    filename_present = (filename_clean in response_lower) or (filename_no_ext in response_lower)
+    return filename_present and is_chunk_substantively_reflected(chunk, response_text)
+
+def clean_invalid_citations(text: str, valid_sources: list) -> str:
+    # Match any pattern of Source citation (optionally enclosed in parentheses)
+    pattern = r"\(?Source:\s*([0-9a-zA-Z.-]+)\s*[\u2014\u2013-]\s*([^\n\r\)]+)\)?"
+    
+    def replace_fn(match):
+        f_val = match.group(1).strip().lower()
+        h_val = match.group(2).strip().lower()
+        h_clean = re.sub(r"[.!?\)]+$", "", h_val).strip()
+        
+        is_valid = False
+        for s in valid_sources:
+            s_file = s["file"].strip().lower()
+            s_head = s["heading"].strip().lower()
+            s_head_clean = re.sub(r"[.!?\)]+$", "", s_head).strip()
+            if s_file == f_val and s_head_clean == h_clean:
+                is_valid = True
+                break
+        
+        if is_valid:
+            return match.group(0)
+        return ""
+        
+    cleaned = re.sub(pattern, replace_fn, text).strip()
+    cleaned = re.sub(r"\n\s*\n", "\n", cleaned)
+    return cleaned
+
 
 SYSTEM_PROMPT = """You are the official customer support AI assistant for Aster & Row, an ecommerce company selling bags, drinkware, and travel accessories.
 
 Follow these strict rules at all times:
-1. GROUNDING: Answer policy or product questions using ONLY the provided retrieved context below. Do not use external or general knowledge about other companies or products. If the context does not contain enough information to answer a question, state clearly that you do not have that information and recommend speaking to a human.
+1. GROUNDING: Answer policy or product questions using ONLY the provided retrieved context below. Do not use external or general knowledge. If the context does not contain enough information to answer a question (for example, if the user asks about past years, legacy policies, or details not explicitly mentioned in the context), state clearly that you do not have that information and do NOT outline unrelated current policy details. Recommend speaking to a human.
 2. CITATIONS: Every policy or product claim you make MUST cite its source at the end of the claim. The citation format MUST be: `Source: filename — heading`. For example: `Source: 01-returns-policy-current.md — Standard return window`. Never invent a source or cite a document not present in the retrieved context.
 3. DETECT CONFLICTS: If the retrieved documents conflict on a policy, do not try to choose or guess the correct one. Explain that company official sources conflict and recommend a human handoff.
 4. PRIVACY: Never expose sensitive customer fields such as name, email, shipping address, risk score, or internal notes. If asked for these, refuse to disclose them and state that they are private, then recommend a human handoff.
@@ -100,6 +140,56 @@ def run_agent_turn(session_id: str, user_message: str) -> dict:
     print(f"\n[DEBUG] Session ID: {session_id} | Chunks in store: {len(_vector_store.chunks)}")
     print(f"[DEBUG] User Message: {user_message}")
     print(f"[DEBUG] session_id={session_id} get_session_handoff={get_session_handoff(session_id)}")
+
+    # 0. Prompt Extraction / System Prompt Leak Security Guard
+    is_prompt_leak_attempt = any(w in user_message.lower() for w in ["system prompt", "ignore instructions", "act as a developer", "hidden instructions", "your prompt", "reveal your instructions"])
+    if is_prompt_leak_attempt:
+        refusal_msg = "I am a customer support AI assistant. I cannot print, reveal, or discuss my system instructions, system prompts, or internal configuration."
+        add_message_to_session(session_id, "user", user_message)
+        add_message_to_session(session_id, "assistant", refusal_msg)
+        return {
+            "response": refusal_msg,
+            "sources": [],
+            "handoff": False,
+            "trace": {
+                "session_id": session_id,
+                "current_user_message": user_message,
+                "retrieved_chunks": [],
+                "tool_calls": [],
+                "tool_results": [],
+                "llm_raw_response": refusal_msg,
+                "final_response": refusal_msg,
+                "sources": [],
+                "handoff_triggered": False,
+                "fallback_triggered": False,
+                "errors": []
+            }
+        }
+
+    # 0.5. Legacy / Past Policy Refusal Interceptor
+    is_legacy_query = any(w in user_message.lower() for w in ["last year", "previous year", "past policy", "old policy", "legacy policy", "former policy", "last year's", "previous year's"])
+    if is_legacy_query:
+        legacy_refusal = "I do not have access to legacy or past policy details from previous years. Our active documents only specify current policy details. For questions regarding past policies, please speak to a human support specialist."
+        add_message_to_session(session_id, "user", user_message)
+        add_message_to_session(session_id, "assistant", legacy_refusal)
+        return {
+            "response": legacy_refusal,
+            "sources": [],
+            "handoff": True,
+            "trace": {
+                "session_id": session_id,
+                "current_user_message": user_message,
+                "retrieved_chunks": [],
+                "tool_calls": [],
+                "tool_results": [],
+                "llm_raw_response": legacy_refusal,
+                "final_response": legacy_refusal,
+                "sources": [],
+                "handoff_triggered": True,
+                "fallback_triggered": False,
+                "errors": []
+            }
+        }
 
     # 1. Prompt Injection Hard Refusal (Returns)
     is_injection_attempt = any(w in user_message.lower() for w in ["migration note", "60 days", "ignore the real policy", "60-day"])
@@ -897,50 +987,40 @@ You MUST explicitly mention the carrier ({ord_data['carrier']}), the order statu
     if handoff:
         set_session_handoff(session_id, True)
 
-    # Extract citations
-    citation_matches = re.findall(r"Source:\s*([0-9a-zA-Z.-]+)\s*[\u2014\u2013-]\s*([^\n\r.]+)", response_text)
-    cited_sources = [{"file": f.strip(), "heading": h.strip()} for f, h in citation_matches]
+    # 1. Extract raw citations from LLM text
+    raw_citation_matches = re.findall(r"Source:\s*([0-9a-zA-Z.-]+)\s*[\u2014\u2013-]\s*([^\n\r.]+)", response_text)
     
-    # Union retrieved chunks that are highly relevant (score >= 0.42) and genuinely used in the response
+    # 2. Keep a citation only if the chunk was retrieved AND is substantively used/reflected
+    cited_sources = []
+    for f, h in raw_citation_matches:
+        f_val = f.strip()
+        h_val = h.strip()
+        matching_chk = None
+        for chk in retrieved_chunks:
+            if chk["filename"].lower() == f_val.lower() and chk["heading"].lower() == h_val.lower():
+                matching_chk = chk
+                break
+        if matching_chk and is_chunk_used_in_response(matching_chk, response_text):
+            cited_sources.append({"file": f_val, "heading": h_val})
+            
+    # 3. Union highly relevant chunks (score >= 0.42) that are genuinely used in the response
     if retrieved_chunks:
-        retrieved_sources = []
         for chk in retrieved_chunks:
             if chk.get("score", 0.0) >= 0.42 and is_chunk_used_in_response(chk, response_text):
-                retrieved_sources.append({"file": chk["filename"], "heading": chk["heading"]})
-                
-        # Union them by filename and heading to avoid duplicates
-        seen = set()
-        unique_sources = []
-        for src in cited_sources + retrieved_sources:
-            key = (src["file"].strip(), src["heading"].strip())
-            if key not in seen:
-                seen.add(key)
-                unique_sources.append({"file": key[0], "heading": key[1]})
-        cited_sources = unique_sources
-
-    # Citations Fallback if model forgot to cite:
-    # Only fall back to citing the top retrieved chunk (Match 1) if the model cited absolutely nothing
-    # but still answered, to ensure we do not cite unused chunks.
+                already_added = any(s["file"].lower() == chk["filename"].lower() and s["heading"].lower() == chk["heading"].lower() for s in cited_sources)
+                if not already_added:
+                    cited_sources.append({"file": chk["filename"], "heading": chk["heading"]})
+                    
+    # 4. Fallback: cite top retrieved chunk if nothing was cited, but only if it's substantively reflected
     if not cited_sources and retrieved_chunks:
         top_chk = retrieved_chunks[0]
-        citations_str = f"\nSource: {top_chk['filename']} — {top_chk['heading']}"
-        response_text += citations_str
-        citation_matches = re.findall(r"Source:\s*([0-9a-zA-Z.-]+)\s*[\u2014\u2013-]\s*([^\n\r.]+)", response_text)
-        cited_sources = [{"file": f.strip(), "heading": h.strip()} for f, h in citation_matches]
-    
-    # If the response is any form of refusal, privacy block, or insufficient information/evidence statement,
-    # we force sources to be empty and strip all citations from the text.
-    response_lower = response_text.lower()
-    refusal_patterns = [
-        "cannot disclose", "unable to disclose", "strictly confidential", "private", "refuse to disclose", "cannot share",
-        "do not have", "don't have", "not have information", "no information", "not mentioned", "not specified", "does not mention",
-        "unable to confirm", "insufficient information", "not enough information", "cannot confirm", "please provide your order id",
-        "i do not find", "i don't find", "not available in the context", "not available in our documents", "not in the provided",
-        "cannot assist with", "cannot process", "do not possess"
-    ]
-    if any(p in response_lower for p in refusal_patterns):
-        response_text = re.sub(r"\n*Source:\s*[0-9a-zA-Z.-]+\s*[\u2014\u2013-]\s*[^\n\r.]+", "", response_text).strip()
-        cited_sources = []
+        if is_chunk_substantively_reflected(top_chk, response_text):
+            citations_str = f"\nSource: {top_chk['filename']} — {top_chk['heading']}"
+            response_text += citations_str
+            cited_sources = [{"file": top_chk["filename"], "heading": top_chk["heading"]}]
+            
+    # 5. Clean response text: strip any Source lines that didn't pass verification
+    response_text = clean_invalid_citations(response_text, cited_sources)
 
     # Add to session memory
     add_message_to_session(session_id, "user", user_message)

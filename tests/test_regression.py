@@ -313,7 +313,7 @@ def test_refusal_clears_sources_regression():
     res = run_agent_turn(session_id, query)
     
     # 1. Confirms the agent returns a refusal/abstention
-    response_text = res["response"].lower()
+    response_text = res["response"].lower().replace("’", "'")
     assert any(w in response_text for w in ["do not have", "don't have", "not have information", "no information", "cannot confirm", "insufficient"]), \
         f"Response did not refuse or abstain correctly: {res['response']}"
         

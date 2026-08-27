@@ -928,9 +928,16 @@ You MUST explicitly mention the carrier ({ord_data['carrier']}), the order statu
         citation_matches = re.findall(r"Source:\s*([0-9a-zA-Z.-]+)\s*[\u2014\u2013-]\s*([^\n\r.]+)", response_text)
         cited_sources = [{"file": f.strip(), "heading": h.strip()} for f, h in citation_matches]
     
-    # If the response is a privacy refusal/confidentiality block, force sources to be empty and strip any citations from the text
+    # If the response is any form of refusal, privacy block, or insufficient information/evidence statement,
+    # we force sources to be empty and strip all citations from the text.
     response_lower = response_text.lower()
-    refusal_patterns = ["cannot disclose", "unable to disclose", "strictly confidential", "private", "refuse to disclose", "cannot share"]
+    refusal_patterns = [
+        "cannot disclose", "unable to disclose", "strictly confidential", "private", "refuse to disclose", "cannot share",
+        "do not have", "don't have", "not have information", "no information", "not mentioned", "not specified", "does not mention",
+        "unable to confirm", "insufficient information", "not enough information", "cannot confirm", "please provide your order id",
+        "i do not find", "i don't find", "not available in the context", "not available in our documents", "not in the provided",
+        "cannot assist with", "cannot process", "do not possess"
+    ]
     if any(p in response_lower for p in refusal_patterns):
         response_text = re.sub(r"\n*Source:\s*[0-9a-zA-Z.-]+\s*[\u2014\u2013-]\s*[^\n\r.]+", "", response_text).strip()
         cited_sources = []

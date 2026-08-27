@@ -300,3 +300,22 @@ def test_missing_package_policy_handoff_regression():
     assert "separate missing package policy" in response_text
     # Confirms handoff is triggered
     assert res_2["handoff"] is True, "Missing package with order ID failed to trigger handoff"
+
+
+# 12. Regression Test for General Refusal Clearing Citations Bug
+def test_refusal_clears_sources_regression():
+    """
+    Verifies that a general policy refusal (e.g. asking for legacy policies not in active context,
+    like "tell me about the return policy from last year") does not leak citations.
+    """
+    session_id = "test-regression-refusal-citation-leak"
+    query = "tell me about the return policy from last year"
+    res = run_agent_turn(session_id, query)
+    
+    # 1. Confirms the agent returns a refusal/abstention
+    response_text = res["response"].lower()
+    assert any(w in response_text for w in ["do not have", "don't have", "not have information", "no information", "cannot confirm", "insufficient"]), \
+        f"Response did not refuse or abstain correctly: {res['response']}"
+        
+    # 2. Confirms that no source list citations are returned
+    assert not res["sources"], f"Agent incorrectly cited KB sources on refusal: {res['sources']}"

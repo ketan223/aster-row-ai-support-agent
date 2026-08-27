@@ -38,6 +38,53 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        const themes = {
+            default: {
+                bg: 'bg-slate-50',
+                headerBg: 'bg-white border-slate-200',
+                headerText: 'text-slate-900',
+                logoBg: 'bg-slate-900 text-white',
+                btnPrimary: 'bg-slate-900 hover:bg-slate-800 text-white',
+                bubbleUser: 'bg-slate-900 text-slate-100 border border-slate-900',
+                bubbleAssistant: 'bg-white text-slate-800 border-slate-200 shadow-sm',
+                accentText: 'text-emerald-600',
+                accentDot: 'bg-emerald-500',
+            },
+            ocean: {
+                bg: 'bg-sky-50/50',
+                headerBg: 'bg-white border-blue-100',
+                headerText: 'text-blue-900',
+                logoBg: 'bg-blue-600 text-white',
+                btnPrimary: 'bg-blue-600 hover:bg-blue-700 text-white',
+                bubbleUser: 'bg-blue-600 text-white border border-blue-600',
+                bubbleAssistant: 'bg-white text-blue-900 border-blue-100 shadow-sm',
+                accentText: 'text-blue-600',
+                accentDot: 'bg-blue-500',
+            },
+            forest: {
+                bg: 'bg-stone-50',
+                headerBg: 'bg-white border-emerald-100',
+                headerText: 'text-emerald-950',
+                logoBg: 'bg-emerald-700 text-white',
+                btnPrimary: 'bg-emerald-700 hover:bg-emerald-800 text-white',
+                bubbleUser: 'bg-emerald-700 text-white border border-emerald-700',
+                bubbleAssistant: 'bg-white text-emerald-955 border-emerald-100 shadow-sm',
+                accentText: 'text-emerald-600',
+                accentDot: 'bg-emerald-500',
+            },
+            charcoal: {
+                bg: 'bg-zinc-900',
+                headerBg: 'bg-zinc-950 border-zinc-805',
+                headerText: 'text-zinc-100',
+                logoBg: 'bg-zinc-800 text-zinc-100 border border-zinc-700',
+                btnPrimary: 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700',
+                bubbleUser: 'bg-zinc-800 text-zinc-100 border border-zinc-700',
+                bubbleAssistant: 'bg-zinc-900 text-zinc-300 border-zinc-800 shadow-sm',
+                accentText: 'text-zinc-400',
+                accentDot: 'bg-zinc-500',
+            }
+        };
+
         // Displays citation cards for source verification.
         function CitationCard({ source }) {
             return (
@@ -65,6 +112,8 @@
             const [handoff, setHandoff] = useState(false);
             const [showDebug, setShowDebug] = useState(false);
             const [debugTrace, setDebugTrace] = useState(null);
+            const [themeName, setThemeName] = useState(localStorage.getItem('ar_theme_name') || 'default');
+            const t = themes[themeName];
 
             const messagesEndRef = useRef(null);
 
@@ -180,22 +229,39 @@
             return (
                 <div class="flex-1 flex overflow-hidden">
                     {/* Main Chat Interface */}
-                    <div class={`flex-1 flex flex-col h-full bg-slate-50 transition-all duration-300 ${showDebug ? 'pr-0 lg:pr-[400px]' : ''}`}>
+                    <div class={`flex-1 flex flex-col h-full ${t.bg} transition-all duration-300 ${showDebug ? 'pr-0 lg:pr-[400px]' : ''}`}>
                         {/* Header */}
-                        <header class="h-16 px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 shadow-sm">
+                        <header class={`h-16 px-6 ${t.headerBg} border-b flex items-center justify-between shrink-0 shadow-sm`}>
                             <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                                <div class={`w-9 h-9 rounded-lg ${t.logoBg} flex items-center justify-center font-bold text-lg shadow-sm`}>
                                     A
                                 </div>
                                 <div>
-                                    <h1 class="text-sm font-semibold text-slate-900">Aster & Row</h1>
-                                    <p class="text-xs text-emerald-600 flex items-center gap-1">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                                    <h1 class={`text-sm font-semibold ${t.headerText}`}>Aster & Row</h1>
+                                    <p class={`text-xs ${t.accentText} flex items-center gap-1`}>
+                                        <span class={`w-1.5 h-1.5 rounded-full ${t.accentDot} inline-block`}></span>
                                         Support Assistant
                                     </p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1 mr-1">
+                                    <i data-lucide="palette" class="w-3.5 h-3.5 text-slate-400"></i>
+                                    <select 
+                                        value={themeName} 
+                                        onChange={e => {
+                                            const newTheme = e.target.value;
+                                            setThemeName(newTheme);
+                                            localStorage.setItem('ar_theme_name', newTheme);
+                                        }}
+                                        class="bg-white border border-slate-200 text-[11px] font-medium rounded-md px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-slate-500 text-slate-700"
+                                    >
+                                        <option value="default">Default</option>
+                                        <option value="ocean">Ocean Blue</option>
+                                        <option value="forest">Forest Green</option>
+                                        <option value="charcoal">Charcoal Dark</option>
+                                    </select>
+                                </div>
                                 <button 
                                     onClick={handleReset}
                                     class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
@@ -224,10 +290,10 @@
                                     {/* Message box */}
                                     <div class={`px-4 py-3 rounded-2xl shadow-sm leading-relaxed text-sm ${
                                         msg.role === 'user' 
-                                            ? 'bg-slate-900 text-slate-100 rounded-tr-none' 
+                                            ? `${t.bubbleUser} rounded-tr-none` 
                                             : msg.error 
                                                 ? 'bg-red-50 text-red-800 border border-red-200 rounded-tl-none'
-                                                : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
+                                                : `${t.bubbleAssistant} rounded-tl-none`
                                     }`}>
                                         <p class="whitespace-pre-wrap">{msg.content}</p>
                                     </div>
@@ -268,7 +334,7 @@
                         </div>
 
                         {/* Input Area */}
-                        <div class="p-4 bg-white border-t border-slate-200 shrink-0 shadow-inner">
+                        <div class={`p-4 ${t.headerBg} border-t shrink-0 shadow-inner`}>
                             <form onSubmit={handleSend} class="flex items-center gap-2 max-w-4xl mx-auto">
                                 <input
                                     type="text"
@@ -276,12 +342,12 @@
                                     onChange={e => setInput(e.target.value)}
                                     placeholder="Ask a question about shipping, returns, order statuses, or products..."
                                     disabled={loading}
-                                    class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-slate-50 focus:bg-white text-sm transition-all"
+                                    class={`flex-1 px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 ${t.bg} focus:bg-white text-sm transition-all`}
                                 />
                                 <button
                                     type="submit"
                                     disabled={loading || !input.trim()}
-                                    class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-sm transition-colors flex items-center gap-2 shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                                    class={`px-4 py-2.5 ${t.btnPrimary} rounded-xl font-medium text-sm transition-colors flex items-center gap-2 shadow disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
                                     <i data-lucide="send" class="w-4 h-4"></i>
                                     <span>Send</span>
